@@ -6,17 +6,17 @@ from langchain_core.messages import HumanMessage
 import logging
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-@app.get("/")
-async def home():
-    return FileResponse("frontend/index.html")
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
+@app.get("/", response_class=FileResponse)
+async def home():
+    return "frontend/index.html"
 
 
 # CORS
