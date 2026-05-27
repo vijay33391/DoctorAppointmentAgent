@@ -1,37 +1,85 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from agent import DoctorAppointmentAgent
 from langchain_core.messages import HumanMessage
-import os
+import logging
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-os.environ.pop("SSL_CERT_FILE", None)
+@app.get("/")
+async def home():
+    return FileResponse("frontend/index.html")
 
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 app = FastAPI()
 
-# Define Pydantic model to accept request body
+
+
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Request schema
 class UserQuery(BaseModel):
     id_number: int
     messages: str
 
+# Initialize once
 agent = DoctorAppointmentAgent()
+app_graph = agent.workflow()
 
+# Health check
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+# Main endpoint
 @app.post("/execute")
-def execute_agent(user_input: UserQuery):
-    app_graph = agent.workflow()
-    
-    # Prepare agent state as expected by the workflow
-    input = [
-        HumanMessage(content=user_input.messages)
-    ]
-    query_data = {
-        "messages": input,
-        "id_number": user_input.id_number,
-        "next": "",
-        "query": "",
-        "current_reasoning": "",
-    }
-    #config = {"configurable": {"thread_id": "1", "recursion_limit": 100}}  
+async def execute_agent(user_input: UserQuery):
 
-    response = app_graph.invoke(query_data,config={"recursion_limit": 20})
-    return {"messages": response["messages"]}
+    try:
+
+        messages = [
+            HumanMessage(content=user_input.messages)
+        ]
+
+        query_data = {
+            "messages": messages,
+            "id_number": user_input.id_number,
+            "next": "",
+            "query": "",
+            "current_reasoning": "",
+        }
+
+        response = app_graph.invoke(
+            query_data,
+            config={"recursion_limit": 20}
+        )
+
+        return {
+            "messages": [
+                {
+                    "type": msg.type,
+                    "content": msg.content
+                }
+                for msg in response["messages"]
+            ]
+        }
+
+    except Exception as e:
+
+        logger.error(f"Execution Error: {str(e)}")
+
+        raise HTTPException(
+            status_code=500,
+            detail="Internal Server Error"
+        )

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Doctor Appointment Agent</title>
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:Arial, sans-serif;
+        }
+
+        body{
+            background:#f4f7fb;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+            height:100vh;
+        }
+
+        .container{
+            width:500px;
+            background:white;
+            padding:20px;
+            border-radius:12px;
+            box-shadow:0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1{
+            text-align:center;
+            margin-bottom:20px;
+            color:#333;
+        }
+
+        input, textarea{
+            width:100%;
+            padding:12px;
+            margin-bottom:15px;
+            border:1px solid #ccc;
+            border-radius:8px;
+            font-size:16px;
+        }
+
+        textarea{
+            resize:none;
+            height:120px;
+        }
+
+        button{
+            width:100%;
+            padding:12px;
+            background:#2563eb;
+            color:white;
+            border:none;
+            border-radius:8px;
+            font-size:16px;
+            cursor:pointer;
+        }
+
+        button:hover{
+            background:#1d4ed8;
+        }
+
+        .chat-box{
+            margin-top:20px;
+            max-height:400px;
+            overflow-y:auto;
+        }
+
+        .message{
+            padding:12px;
+            margin-bottom:10px;
+            border-radius:10px;
+            line-height:1.5;
+        }
+
+        .human{
+            background:#dbeafe;
+            text-align:right;
+        }
+
+        .ai{
+            background:#dcfce7;
+            text-align:left;
+        }
+
+        .loading{
+            text-align:center;
+            margin-top:10px;
+            color:gray;
+        }
+
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Doctor Appointment Agent</h1>
+
+    <input 
+        type="number"
+        id="id_number"
+        placeholder="Enter Your ID Number"
+    >
+
+    <textarea
+        id="message"
+        placeholder="Type your message..."
+    ></textarea>
+
+    <button onclick="sendMessage()">
+        Send Message
+    </button>
+
+    <div class="loading" id="loading"></div>
+
+    <div class="chat-box" id="chatBox"></div>
+
+</div>
+
+<script>
+
+    async function sendMessage(){
+
+        const idNumber = document.getElementById("id_number").value;
+
+        const message = document.getElementById("message").value;
+
+        const chatBox = document.getElementById("chatBox");
+
+        const loading = document.getElementById("loading");
+
+        if(!idNumber || !message){
+            alert("Please fill all fields");
+            return;
+        }
+
+        // Show user message
+        chatBox.innerHTML += `
+            <div class="message human">
+                ${message}
+            </div>
+        `;
+
+        loading.innerHTML = "Thinking...";
+
+        try{
+
+            const response = await fetch("/execute", {
+
+                method:"POST",
+
+                headers:{
+                    "Content-Type":"application/json"
+                },
+
+                body:JSON.stringify({
+                    id_number:parseInt(idNumber),
+                    messages:message
+                })
+
+            });
+
+            const data = await response.json();
+
+            console.log(data);
+
+            // Find latest AI message
+            const aiMessage = data.messages
+                .filter(msg => msg.type === "ai")
+                .pop();
+
+            if(aiMessage){
+
+                chatBox.innerHTML += `
+                    <div class="message ai">
+                        ${aiMessage.content}
+                    </div>
+                `;
+            }
+
+            loading.innerHTML = "";
+
+            document.getElementById("message").value = "";
+
+            chatBox.scrollTop = chatBox.scrollHeight;
+
+        }catch(error){
+
+            console.error(error);
+
+            loading.innerHTML = "";
+
+            chatBox.innerHTML += `
+                <div class="message ai">
+                    Error connecting to server
+                </div>
+            `;
+        }
+    }
+
+</script>
+
+</body>
+</html>

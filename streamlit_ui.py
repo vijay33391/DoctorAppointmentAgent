@@ -1,7 +1,11 @@
 import streamlit as st
 import requests
 
-API_URL = "http://127.0.0.1:8000/execute" 
+# Detect if running on Streamlit Cloud (secrets available)
+if "API_URL" in st.secrets:
+    API_URL = st.secrets["API_URL"]   # Render URL
+else:
+    API_URL = "http://127.0.0.1:8000/execute"   # Local FastAPI 
 
 st.title("🩺 Doctor Appointment System")
 
